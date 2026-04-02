@@ -113,7 +113,7 @@ This means:
 - Data is stored only on your own machine and is never sent anywhere
 - Clearing your browser's site data will erase the saved state. Use Export CSV to back up your prompts before doing this.
 
-If you share the HTML file with someone else, it will load with the default ESL Birmingham 2026 prompts and players on their machine, since local storage is per-browser.
+If you share the HTML file with someone else, it will load with the default prompts and players on their machine, since local storage is per-browser.
 
 ---
 
