@@ -469,33 +469,68 @@ function getThemeForPlayer(idx) {
 }
 
 function regenerate() {
-  const freeSpace = document.getElementById('optFree')?.checked ?? true;
-  const excludeName = document.getElementById('optExclude')?.checked ?? true;
+  const freeSpace = document.getElementById('optFree') ? document.getElementById('optFree').checked : true;
+  const excludeName = document.getElementById('optExclude') ? document.getElementById('optExclude').checked : true;
   const needed = 25 - (freeSpace ? 1 : 0);
+  const n = state.players.length;
+
+  // Mixing rule 1: no prompt appears on more than 75% of cards
+  const maxAppearances = Math.max(1, Math.ceil(n * 0.75));
+  // Mixing rule 2: total unique prompts used must cover at least 50% of players * needed slots
+  // (enforced naturally by rule 1 when prompt pool is large enough)
+  const minUniquePrompts = Math.ceil(n * 0.5);
+
+  const usageCount = {};
+  state.prompts.forEach(p => { usageCount[p] = 0; });
 
   state.cards = [];
-  for (let i = 0; i < state.players.length; i++) {
-    const name = state.players[i];
-    const valid = excludeName
-      ? state.prompts.filter(p => !mentionsName(p, name))
-      : [...state.prompts];
 
-    if (valid.length < needed) {
-      state.cards.push({ name, error: `Only ${valid.length} valid prompts (need ${needed})`, cells: [] });
+  for (let i = 0; i < n; i++) {
+    const name = state.players[i];
+
+    const baseValid = excludeName
+      ? state.prompts.filter(p => !mentionsName(p, name))
+      : state.prompts.slice();
+
+    if (baseValid.length < needed) {
+      state.cards.push({ name, error: 'Only ' + baseValid.length + ' valid prompts (need ' + needed + ')', cells: [] });
       continue;
     }
 
-    const selected = shuffle([...valid]).slice(0, needed);
+    // Prefer prompts that haven't hit the appearance cap yet
+    const underUsed = baseValid.filter(p => (usageCount[p] || 0) < maxAppearances);
+    const overUsed  = baseValid.filter(p => (usageCount[p] || 0) >= maxAppearances);
+
+    let pool;
+    if (underUsed.length >= needed) {
+      pool = shuffle(underUsed.slice()).slice(0, needed);
+    } else if (underUsed.length + overUsed.length >= needed) {
+      pool = shuffle(underUsed.slice()).concat(shuffle(overUsed.slice())).slice(0, needed);
+    } else {
+      state.cards.push({ name, error: 'Only ' + baseValid.length + ' valid prompts (need ' + needed + ')', cells: [] });
+      continue;
+    }
+
+    pool.forEach(p => { usageCount[p] = (usageCount[p] || 0) + 1; });
+
+    const shuffled = shuffle(pool.slice());
     const cells = [];
     let idx = 0;
     for (let r = 0; r < 5; r++) {
       for (let c = 0; c < 5; c++) {
         if (freeSpace && r === 2 && c === 2) cells.push({ text: 'FREE', free: true });
-        else { cells.push({ text: selected[idx++], free: false }); }
+        else cells.push({ text: shuffled[idx++], free: false });
       }
     }
     state.cards.push({ name, cells, theme: getThemeForPlayer(i) });
   }
+
+  // Compute mixing health for stats display
+  const counts = Object.values(usageCount);
+  const usedPrompts = counts.filter(c => c > 0).length;
+  const maxUsage = counts.length ? Math.max.apply(null, counts) : 0;
+  state.mixingStats = { usedPrompts, maxUsage, maxAppearances, minUniquePrompts, n };
+
   renderCards();
   updateStats();
 }
@@ -611,20 +646,41 @@ function updateStats() {
   document.getElementById('statPlayers').textContent = state.players.length;
   document.getElementById('statPrompts').textContent = state.prompts.length;
 
-  const freeSpace = document.getElementById('optFree')?.checked ?? true;
+  const freeSpace = document.getElementById('optFree') ? document.getElementById('optFree').checked : true;
   const needed = 25 - (freeSpace ? 1 : 0);
   document.getElementById('statPer').textContent = needed;
 
   const alertBox = document.getElementById('alertBox');
-  if (state.prompts.length >= needed && state.players.length > 0) {
-    alertBox.innerHTML = `<div class="alert ok">All ${state.players.length} cards can be generated.</div>`;
-  } else if (state.players.length === 0) {
-    alertBox.innerHTML = `<div class="alert warn">Add at least one player.</div>`;
+  const hasErrors = state.cards.some(c => c.error);
+  const n = state.players.length;
+
+  if (n === 0) {
+    alertBox.innerHTML = '<div class="alert warn">Add at least one player.</div>';
+  } else if (state.prompts.length < needed) {
+    alertBox.innerHTML = '<div class="alert warn">Need at least ' + needed + ' prompts (have ' + state.prompts.length + ').</div>';
+  } else if (hasErrors) {
+    alertBox.innerHTML = '<div class="alert warn">Some players don\'t have enough valid prompts after name filtering.</div>';
+  } else if (state.mixingStats && n > 1) {
+    const { usedPrompts, maxUsage, maxAppearances, minUniquePrompts } = state.mixingStats;
+    const mixingOk = usedPrompts >= minUniquePrompts && maxUsage <= maxAppearances;
+    const capLabel = maxAppearances + '/' + n + ' cards';
+    if (mixingOk) {
+      alertBox.innerHTML = '<div class="alert ok">'
+        + 'All ' + n + ' cards generated. '
+        + usedPrompts + ' unique prompts used &mdash; '
+        + 'max any prompt appears: ' + maxUsage + ' (' + capLabel + ' cap).'
+        + '</div>';
+    } else {
+      alertBox.innerHTML = '<div class="alert warn">'
+        + 'Mixing targets not fully met. ' + usedPrompts + ' unique prompts used. '
+        + 'Add more prompts to improve card variety.'
+        + '</div>';
+    }
   } else {
-    alertBox.innerHTML = `<div class="alert warn">Need at least ${needed} prompts (have ${state.prompts.length}).</div>`;
+    alertBox.innerHTML = '<div class="alert ok">All ' + n + ' cards generated.</div>';
   }
 
-  document.getElementById('pdfBtn').disabled = state.cards.length === 0 || state.cards.some(c => c.error);
+  document.getElementById('pdfBtn').disabled = state.cards.length === 0 || hasErrors;
 }
 
 // ── Players ───────────────────────────────────────────

@@ -135,6 +135,16 @@ This filtering only applies when the **Exclude player's own name from card** opt
 
 From each player's filtered prompt pool, 24 prompts are selected at random without replacement (or 25 if the FREE space is disabled). The selection is reshuffled every time you click **Reshuffle cards** or make a change that affects the prompt pool.
 
+Two mixing rules are enforced across all cards to ensure variety:
+
+**Rule 1 — Appearance cap:** No single prompt can appear on more than 75% of cards. With 12 players that means any prompt can appear on at most 9 cards. This prevents a small number of popular prompts dominating every card.
+
+**Rule 2 — Unique prompt minimum:** The algorithm prioritises prompts that haven't hit their appearance cap yet, naturally ensuring that at least 50% of players × 24 slots worth of distinct prompts are spread across the full set of cards.
+
+In practice, prompts are split into an "under-used" pool (below the cap) and an "over-used" pool (at the cap). Each card fills from under-used prompts first, only dipping into over-used ones if the under-used pool runs short. This is a soft fallback — the rules hold as long as the prompt list is large enough.
+
+The stats panel shows how many unique prompts were used and the highest number of times any single prompt appeared, so you can see at a glance how well-mixed the current set of cards is.
+
 ### Grid layout
 
 Selected prompts are placed into a 5×5 grid, left-to-right, top-to-bottom. If the FREE space option is enabled, the centre cell (row 3, column 3) is always the FREE square and is excluded from the 24 prompt slots.
