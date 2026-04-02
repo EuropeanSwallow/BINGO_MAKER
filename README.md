@@ -8,7 +8,7 @@ A standalone web app for generating personalised bingo cards as a PDF. No instal
 
 1. Download `bingo_card_generator.html`
 2. Double-click it to open in Chrome or Firefox
-3. Your players and prompts load automatically (pre-loaded with the ESL Birmingham 2026 set)
+3. Your players and prompts load automatically (pre-loaded with random values)
 4. Click **Generate PDF** in the top-right corner
 5. A file called `bingo_cards.pdf` downloads to your Downloads folder — one page per player
 
@@ -64,17 +64,16 @@ Each file contains one entry per line with no headers:
 
 **bingo_prompts.csv**
 ```
-Someone says 'Align'
-Huskar 1st picked
-Meepo on mainstage
-Drunk political argument
+Inside Joke
+Someone spills a drink
+X caught smoking
 ```
 
 **bingo_players.csv**
 ```
-Angus
-Robbie
-Fraser
+Harry
+Tom
+Richard
 ```
 
 If a prompt contains a comma, it is automatically wrapped in double quotes on export and correctly unwrapped on import. You do not need to do this manually.
