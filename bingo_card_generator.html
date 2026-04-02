@@ -154,7 +154,7 @@
 
   /* ── Card grid ── */
   .card-area { flex: 1; overflow-y: auto; padding: 24px; }
-  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 20px; }
 
   /* ── Bingo card ── */
   .bingo-card {
@@ -171,31 +171,37 @@
   }
   .card-player-name {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 22px; letter-spacing: 1px;
+    font-size: clamp(16px, 2vw, 26px); letter-spacing: 1px;
   }
   .bingo-letters { display: flex; gap: 3px; }
   .bl {
-    width: 22px; height: 22px; border-radius: 4px;
+    width: clamp(18px, 1.6vw, 26px); height: clamp(18px, 1.6vw, 26px);
+    border-radius: 4px;
     display: flex; align-items: center; justify-content: center;
-    font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 0.5px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(10px, 1vw, 14px); letter-spacing: 0.5px;
   }
 
-  .bingo-grid-wrap { padding: 10px 12px 12px; }
+  .bingo-grid-wrap { padding: 8px 10px 10px; }
   .bingo-grid {
     display: grid; grid-template-columns: repeat(5, 1fr);
-    gap: 3px;
+    gap: clamp(2px, 0.3vw, 4px);
   }
   .cell {
-    aspect-ratio: 1;
+    min-height: clamp(40px, 5vw, 70px);
     display: flex; align-items: center; justify-content: center;
-    text-align: center; font-size: 8px; line-height: 1.3;
-    border-radius: 4px; padding: 3px;
+    text-align: center;
+    font-size: clamp(7px, 0.85vw, 11px);
+    line-height: 1.35;
+    border-radius: 4px;
+    padding: clamp(4px, 0.5vw, 8px);
     transition: opacity 0.2s;
     cursor: default;
+    word-break: break-word;
   }
   .cell.free {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 14px; letter-spacing: 1px;
+    font-size: clamp(11px, 1.3vw, 17px); letter-spacing: 1px;
   }
 
   /* ── Warning / status ── */
@@ -288,7 +294,7 @@
       <div class="panel">
         <div class="panel-title">Card Theme</div>
         <div class="swatches" id="swatches"></div>
-        <p style="font-size:11px;color:var(--text3);margin-top:8px;">Last swatch = random colour per card</p>
+        <p style="font-size:11px;color:var(--text3);margin-top:8px;">Top row: vivid dark themes. Bottom row: neutral light themes. Last swatch = random per card.</p>
       </div>
 
       <!-- Options -->
@@ -348,6 +354,7 @@
             <input type="text" id="promptSearch" placeholder="Search prompts…" style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:6px 10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;width:220px;" oninput="renderPromptList()">
           </div>
           <button class="btn" onclick="sortPrompts()">Sort A–Z</button>
+          <button class="btn" style="color:var(--red);border-color:var(--red);" onclick="deleteAllPrompts()">Delete all</button>
         </div>
         <div style="padding:20px;overflow-y:auto;flex:1;">
           <div class="prompt-list" id="promptList"></div>
@@ -368,14 +375,23 @@
 // ── State ──────────────────────────────────────────────
 const STORAGE_KEY = 'bingo_gen_v2';
 
+// High-contrast dark themes (original set)
+// Neutral/readable themes (new — light backgrounds, dark text)
 const THEMES = [
-  { name:'lime',   cell:'#1a2a00', text:'#c8f060', free:'#c8f060', freeText:'#0e0e0e' },
-  { name:'teal',   cell:'#002a20', text:'#40d0a0', free:'#40d0a0', freeText:'#0e0e0e' },
-  { name:'purple', cell:'#1e1030', text:'#a080ff', free:'#a080ff', freeText:'#0e0e0e' },
-  { name:'coral',  cell:'#2e0f08', text:'#ff7c5c', free:'#ff7c5c', freeText:'#0e0e0e' },
-  { name:'blue',   cell:'#001428', text:'#60a8ff', free:'#60a8ff', freeText:'#0e0e0e' },
-  { name:'pink',   cell:'#2e0818', text:'#ff70b0', free:'#ff70b0', freeText:'#0e0e0e' },
-  { name:'random', cell:null, text:null, free:null, freeText:null },
+  { name:'lime',        cell:'#1a2a00', text:'#c8f060', free:'#c8f060', freeText:'#0e0e0e' },
+  { name:'teal',        cell:'#002a20', text:'#40d0a0', free:'#40d0a0', freeText:'#0e0e0e' },
+  { name:'purple',      cell:'#1e1030', text:'#a080ff', free:'#a080ff', freeText:'#0e0e0e' },
+  { name:'coral',       cell:'#2e0f08', text:'#ff7c5c', free:'#ff7c5c', freeText:'#0e0e0e' },
+  { name:'blue',        cell:'#001428', text:'#60a8ff', free:'#60a8ff', freeText:'#0e0e0e' },
+  { name:'pink',        cell:'#2e0818', text:'#ff70b0', free:'#ff70b0', freeText:'#0e0e0e' },
+  // Neutral / readable (light bg, dark text — easier to read when printed)
+  { name:'slate',       cell:'#eef0f4', text:'#2c3a52', free:'#2c3a52', freeText:'#ffffff' },
+  { name:'stone',       cell:'#f2ede8', text:'#4a3728', free:'#4a3728', freeText:'#ffffff' },
+  { name:'sage',        cell:'#edf2ed', text:'#2d4a30', free:'#2d4a30', freeText:'#ffffff' },
+  { name:'dusty rose',  cell:'#f5edf0', text:'#5a2d3e', free:'#5a2d3e', freeText:'#ffffff' },
+  { name:'navy',        cell:'#e8edf5', text:'#1a2c52', free:'#1a2c52', freeText:'#ffffff' },
+  { name:'charcoal',    cell:'#efefef', text:'#2a2a2a', free:'#2a2a2a', freeText:'#ffffff' },
+  { name:'random',      cell:null, text:null, free:null, freeText:null },
 ];
 
 const RANDOM_PALETTES = [
@@ -386,6 +402,12 @@ const RANDOM_PALETTES = [
   { cell:'#001428', text:'#60a8ff', free:'#60a8ff', freeText:'#0e0e0e' },
   { cell:'#2e0818', text:'#ff70b0', free:'#ff70b0', freeText:'#0e0e0e' },
   { cell:'#1a1200', text:'#f0c040', free:'#f0c040', freeText:'#0e0e0e' },
+  { cell:'#eef0f4', text:'#2c3a52', free:'#2c3a52', freeText:'#ffffff' },
+  { cell:'#f2ede8', text:'#4a3728', free:'#4a3728', freeText:'#ffffff' },
+  { cell:'#edf2ed', text:'#2d4a30', free:'#2d4a30', freeText:'#ffffff' },
+  { cell:'#f5edf0', text:'#5a2d3e', free:'#5a2d3e', freeText:'#ffffff' },
+  { cell:'#e8edf5', text:'#1a2c52', free:'#1a2c52', freeText:'#ffffff' },
+  { cell:'#efefef', text:'#2a2a2a', free:'#2a2a2a', freeText:'#ffffff' },
 ];
 
 let state = {
@@ -409,42 +431,59 @@ function saveState() {
 
 // ── Seed data ──────────────────────────────────────────
 const DEFAULT_PROMPTS = [
-  "Someone says 'Align'","Zack gets drunk and goes bed early","Chinese team top 3","SA team top 3",
-  "NA team top 3","West European team top 3","East European team top 3","Smoking group forms",
-  "Team wins at crib by more than 30 points","Adam breaks a toilet","Jokes that liquid didnt qualify",
-  "Meet Blitz/Quinn","TeaGuv remembers us","Someone mentions ESL 2018","Someone makes a dog bark sound",
-  "Rampage on mainstage","<19 min game on mainstage","Naga Carry picked on mainstage",
-  "Someone shit talking Birmingham","Peaky blinders reference at ESL","Guinness runs out at the arena",
-  "More than 1 rapier in a singular mainstage game","XG finish 2nd","Someone says 'Get jonned'",
-  "Jon comes to ESL","Luke comes to ESL","Someone learns new, but obvious to the group dota mechanic",
-  "Mcdonalds breakfast","Fraser or Adam question pro BKB purchase","Huskar 1st picked",
-  "Someone says 'Polycule'","Tamatanga evening meal","Swedes ditch group for Pro friends",
-  "Angus talks shit on popular opinion","Jon/Henry says 'The wife...'","Henry talks about Spa hotels",
-  "Mention of Arjun's tinder account","Robbie wears black trousers, top, jacket & hat",
-  "Walk past pro in city centre","Non-national in group bad mouthing England",
-  "Daphne says 'Quinn is soo nice'","Angus's brain hurts and misses a game",
-  "Anyone plays emulator/osrs in main arena","Someone says 'Even i could do that' when watching a game",
-  "Fraser says he doesnt care about something","Someone says 'Arjun nowhere to be seen'",
-  "No bad mouthing of Robbie's dota performances at any point","Gem lost within 1 minute of purchase on mainstage",
-  "Someone says 'XP waste'","Zack endangers someone (e.g. pushing onto road)",
-  "Fraser says 'X Nigma player goated'","Arjun wins werewolf type game",
-  "Perudo; all players remaining with 1 die left","Perudo: losing/lying when calling six sixes",
-  "Perudo: lost dice","Stolen aegis on mainstage","Meepo on mainstage",
-  "Angus displays dislike of Jenkins","No stun pro draft","Someone says 'Win condition'",
-  "Caster says 'RTZ' when someone gets cliffed or manta's","Kacper says 'Chinese Pasta'",
-  "Adam/Kacper say 'Bomba'","James mentions Mable","James talks about the offlane being dead",
-  "James mentions how he always buys auras and teamfight","Anyone mentions lost prophets",
-  "Jon says someone should 'uninstall'","Drunk political argument","Lager vs ale debate",
-  "Someone crashes out post 'discussion'","Someone gets 'svaged'","Someone says 'formerly maxed'",
-  "Jolina says woke liberal nonsense","Jon/Zack mention Corpus Christi",
-  "Werewolves: 'The spartacus' e.g. More than 1 seer","Jon does work instead of games in Birmingham",
-  "Bad mouthing of eastern europe","Deloitte bad","Recruit extra player e.g 'Birmingham Adam'",
-  "Zack pick up woman","Daphne talks about food delivery e.g VoltGate","Daphne mentions vegetarianism",
-  "Anyone mentions Brexit","Zack brings capitalism into random conversation",
-  "Complaints about zack or henry's snoring"
+  "Someone arrives late",
+  "A phone goes off at the worst moment",
+  "Someone spills a drink",
+  "An inside joke nobody explains",
+  "Someone takes a photo of their food",
+  "Someone says they're leaving, then stays",
+  "A group photo takes three or more attempts",
+  "Someone mentions they're on a diet, then ignores it",
+  "Someone falls asleep first",
+  "An unsolicited speech is given",
+  "Someone gets someone else's name wrong",
+  "Someone says 'we should do this more often'",
+  "A debate about where to go next breaks out",
+  "Someone is on their phone for ages",
+  "Someone orders for the whole table",
+  "Someone says 'last one, I promise'",
+  "The music volume becomes a debate",
+  "Someone brings up an old embarrassing story",
+  "A running joke from a previous year surfaces",
+  "Someone gets overly competitive",
+  "An awkward silence lasts too long",
+  "Someone starts dancing before anyone else",
+  "Someone dramatically removes their shoes",
+  "Two people show up in the same outfit or colour",
+  "Someone refuses to admit they're cold",
+  "The bill causes a disagreement",
+  "Someone loses something temporarily",
+  "A story gets interrupted and never finished",
+  "Someone proposes a plan that never happens",
+  "Someone spots someone they know unexpectedly",
+  "The wrong order arrives and gets accepted anyway",
+  "Someone brings up politics unprompted",
+  "A taxi or lift home causes an argument",
+  "Someone claims they never do this normally",
+  "Someone is voluntold to do something",
+  "A toast goes on far too long",
+  "Someone tries a food they claimed to hate",
+  "Someone says 'I'm not even that tired'",
+  "A complaint is made about the temperature",
+  "Someone is dramatically overdressed or underdressed",
+  "Someone gives unsolicited life advice",
+  "Someone references a meme nobody else gets",
+  "A game gets taken way too seriously",
+  "Someone disappears for 20 minutes with no explanation",
+  "Someone says 'trust me, you'll love it'",
+  "A new catchphrase is coined for the group",
+  "Someone makes the same joke twice in one evening",
+  "Someone insists they know a shortcut",
+  "Something gets blamed on someone not present",
+  "The loudest person claims to be shy"
 ];
 
-const DEFAULT_PLAYERS = ["Angus","Robbie","Fraser","Arjun","Henry","James","Zack","Kacper","Adam","Jolina","Daphne","Jon"];
+const DEFAULT_PLAYERS = ["Alex","Blake","Casey","Dana","Elliot","Frankie","Glen","Harper","Imogen","Jordan","Kit","Lou"];
 
 // ── Init ──────────────────────────────────────────────
 loadState();
@@ -732,14 +771,30 @@ function sortPrompts() {
   renderPromptList();
 }
 
+function deleteAllPrompts() {
+  if (!state.prompts.length) return;
+  if (!confirm('Delete all ' + state.prompts.length + ' prompts? This cannot be undone.')) return;
+  state.prompts = [];
+  saveState();
+  regenerate();
+  renderPromptList();
+  updateStats();
+}
+
 
 // ── Theme ─────────────────────────────────────────────
 function buildSwatches() {
-  const colors = ['#c8f060','#40d0a0','#a080ff','#ff7c5c','#60a8ff','#ff70b0','conic-gradient(#c8f060,#a080ff,#ff7c5c,#40d0a0)'];
   const wrap = document.getElementById('swatches');
-  wrap.innerHTML = colors.map((c,i) =>
-    `<div class="swatch ${i===state.themeIdx?'active':''}" style="background:${c};" onclick="setTheme(${i})"></div>`
-  ).join('');
+  // Swatch colours: first 6 dark/vivid, then 6 neutral, then random
+  const swatchColors = [
+    '#c8f060','#40d0a0','#a080ff','#ff7c5c','#60a8ff','#ff70b0',
+    '#2c3a52','#4a3728','#2d4a30','#5a2d3e','#1a2c52','#2a2a2a',
+    'conic-gradient(#c8f060,#a080ff,#ff7c5c,#40d0a0)'
+  ];
+  wrap.innerHTML = swatchColors.map((c, i) => {
+    const divider = i === 6 ? '<div style="width:100%;height:1px;background:var(--border);margin:4px 0;"></div>' : '';
+    return divider + `<div class="swatch ${i===state.themeIdx?'active':''}" style="background:${c};" title="${THEMES[i]?THEMES[i].name:''}" onclick="setTheme(${i})"></div>`;
+  }).join('');
 }
 
 function setTheme(i) {
